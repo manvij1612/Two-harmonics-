@@ -53,7 +53,6 @@ __date__ = "FIXME"
 #
 # =============================================================================
 
-
 def _make_waveform_from_cartesian(approximant, mass1, mass2, spin_1x, spin_1y, spin_1z, 
                                   spin_2x, spin_2y, spin_2z, iota, phase, distance, flow, 
                                   df, flen, fhigh, f_ref):

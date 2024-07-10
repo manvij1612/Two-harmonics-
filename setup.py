@@ -18,7 +18,7 @@ setuptools.setup(
 	description="Representation of precessing waveforms based on harmonic modes.",
 	long_description=long_description,
 	long_description_content_type="text/markdown",
-	url="https://git.ligo.org/manvij1612/twoharmonics",
+	url="https://github.com/manvij1612/Two-harmonics-.git",
 	packages = setuptools.find_packages(),
 	classifiers=[
         'Programming Language :: Python :: 3',
