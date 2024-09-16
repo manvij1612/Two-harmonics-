@@ -37,7 +37,7 @@ def plot_waveform_harmonics(waveform_dict, harmonic_dict, coeff_dict, flow,
         freq = np.linspace(flow,fhigh,len(harmonic_dict[m]))
         plt.loglog(freq, c * abs(harmonic_dict[m]), '--', label = 'harmonic %d' % m, lw = 3 )
 
-    #print(len(wf)), delta_f = fhigh/N
+    print(len(wf))
 	plt.xlim(flow, fhigh)
     plt.ylim(1e-23, 2e-20)
     plt.grid('False')

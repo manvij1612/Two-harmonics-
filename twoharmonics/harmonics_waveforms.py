@@ -21,7 +21,6 @@
 #
 # =============================================================================
 #
-
 import numpy 
 import lal
 import lalsimulation as lalsim
@@ -38,8 +37,8 @@ from lalsimulation import CreateSimNeutronStarFamily
 from lalsimulation import SimNeutronStarLoveNumberK2
 from lalsimulation import SimNeutronStarEOS4ParameterSpectralDecomposition
 from lal import MSUN_SI, C_SI, MRSUN_SI
-from conversions import calculate_dpsi, calculate_dphi, component_spins
-from pycbc.types import FrequencySeries
+from twoharmonics.conversions import calculate_dpsi, calculate_dphi, component_spins
+
 
 #-
 __author__ = "Stephen Fairhurst <stephen.fairhurst@ligo.org>, Amit Reza <amit.reza@ligo.org>, Sarah Caudill <sarah.caudill@ligo.org>"
@@ -73,18 +72,25 @@ def _make_waveform_from_cartesian(approximant, mass1, mass2, spin_1x, spin_1y, s
                                                 spin_2x[0], spin_2y[0], spin_2z[0], distance*lal.PC_SI, 
                                                 iota[0], phase, 0.0, 0.0, 0.0, df, flow, 
                                                 fhigh, f_ref, None, parameters['approximant'])
-    
-    #- PyCBC Frequency Series is used
-    hp = FrequencySeries(hp.data.data[:], delta_f = hp.deltaF, epoch = hp.epoch)
 
-    hc = FrequencySeries(hc.data.data[:], delta_f = hc.deltaF, epoch = hc.epoch)
-    
-    
+    hp_data = numpy.array(hp.data.data)
+    hc_data = numpy.array(hc.data.data)
+
     if flen is not None:
-        hp.resize(flen)
-        hc.resize(flen)
+        if len(hp_data) > flen:
+            hp_data = hp_data[:flen]
+            hc_data = hc_data[:flen]
+        elif len(hp_data) < flen:
+            hp_data = np.pad(hp_data, (0, flen - len(hp_data)), 'constant')
+            hc_data = np.pad(hc_data, (0, flen - len(hc_data)), 'constant')
     
-    return hp, hc
+    hp_resized = lal.CreateCOMPLEX16FrequencySeries("hp", hp.epoch, hp.f0, hp.deltaF, lal.DimensionlessUnit, len(hp_data))
+    hc_resized = lal.CreateCOMPLEX16FrequencySeries("hc", hc.epoch, hc.f0, hc.deltaF, lal.DimensionlessUnit, len(hc_data))
+    
+    hp_resized.data.data = hp_data
+    hc_resized.data.data = hc_data
+    
+    return hp_resized, hc_resized
 
 def _cartesian_spins_from_spherical(theta_jn, phi_jl, tilt_1, tilt_2, phi_12, 
                                     a_1, a_2, mass1, mass2, f_ref, phase):
@@ -97,7 +103,7 @@ def _cartesian_spins_from_spherical(theta_jn, phi_jl, tilt_1, tilt_2, phi_12,
     return data
     
 
-def _make_waveform_from_spherical(approx, theta_jn, phi_jl, phase, mass1, mass2, 
+def make_waveform_from_spherical(approx, theta_jn, phi_jl, phase, mass1, mass2, 
                                   tilt_1, tilt_2, phi_12, a_1, a_2, distance, f_ref, 
                                   flow, fhigh, df, flen):
     
@@ -117,14 +123,16 @@ def _make_waveform_from_spherical(approx, theta_jn, phi_jl, phase, mass1, mass2,
 
 def make_waveform(approx, theta_jn, phi_jl, phase, psi_J, mass1, mass2, tilt_1, tilt_2, phi_12, a_1, a_2, beta, distance, f_ref, flow, fhigh, df, flen):
     
-    hp, hc = _make_waveform_from_spherical(approx, theta_jn, phi_jl, phase, mass1, mass2, tilt_1, tilt_2, 
+    hp, hc = make_waveform_from_spherical(approx, theta_jn, phi_jl, phase, mass1, mass2, tilt_1, tilt_2, 
                             phi_12, a_1, a_2, distance, f_ref, flow, fhigh, df, flen)
+    hp_data = numpy.array(hp.data.data)
+    hc_data = numpy.array(hc.data.data)
 
     dpsi = calculate_dpsi(theta_jn, phi_jl, beta)
     
     fp = numpy.cos(2 * (psi_J - dpsi))
     fc = -1. * numpy.sin(2 * (psi_J - dpsi))
-    h = (fp * hp + fc * hc)
+    h = (fp * hp_data + fc * hc_data)
     h *= numpy.exp(2j * calculate_dphi(theta_jn, phi_jl, beta))
     
     return h
@@ -276,7 +284,10 @@ def make_full_waveform(hp, hc, psi0):
     
     fp = numpy.cos(2 * psi0)
     fc = numpy.sin(2 * psi0)
-    temp = fp * hp + fc * hc
+    hp_data = numpy.array(hp.data.data)
+    hc_data = numpy.array(hc.data.data)
+    
+    temp = fp * hp_data + fc * hc_data
     
     return temp
 
@@ -314,11 +325,22 @@ def make_single_spin_plus_cross(approximant, theta_JN, phi_JL, phi0, chi_eff, ch
                                                 distance*lal.PC_SI, inc, phi0, 
                                                 0.0, 0.0, 0.0, df, flow, fhigh,
                                                 f_ref, None, parameters['approximant'])
+
+    hp_data = numpy.array(hp.data.data)
+    hc_data = numpy.array(hc.data.data)
     
-    hp = FrequencySeries(hp.data.data[:], delta_f = hp.deltaF, epoch = hp.epoch)
-    hc = FrequencySeries(hc.data.data[:], delta_f = hc.deltaF, epoch = hc.epoch)
+    if flen is not None:
+        if len(hp_data) > flen:
+            hp_data = hp_data[:flen]
+            hc_data = hc_data[:flen]
+        elif len(hp_data) < flen:
+            hp_data = np.pad(hp_data, (0, flen - len(hp_data)), 'constant')
+            hc_data = np.pad(hc_data, (0, flen - len(hc_data)), 'constant')
+
+    hp_resized = lal.CreateCOMPLEX16FrequencySeries("hp", hp.epoch, hp.f0, hp.deltaF, lal.DimensionlessUnit, len(hp_data))
+    hc_resized = lal.CreateCOMPLEX16FrequencySeries("hc", hc.epoch, hc.f0, hc.deltaF, lal.DimensionlessUnit, len(hc_data))
     
-    hp.resize(flen)
-    hc.resize(flen)
+    hp_resized.data.data = hp_data
+    hc_resized.data.data = hc_data
     
-    return hp, hc
+    return hp_resized, hc_resized
